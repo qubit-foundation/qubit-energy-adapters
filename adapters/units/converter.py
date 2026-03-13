@@ -131,8 +131,10 @@ class UnitConverter:
             measurement_type = self._detect_measurement_type(from_unit)
         
         if measurement_type is None:
-            # Unknown unit, return as-is
-            return value, from_unit
+            raise ValueError(
+                f"Unknown unit '{from_unit}': cannot detect measurement type. "
+                f"Provide measurement_type explicitly or use a recognized unit."
+            )
         
         # Get SI unit for this measurement type
         si_unit = self._get_si_unit(measurement_type)
@@ -149,8 +151,10 @@ class UnitConverter:
         conversions = self.conversions.get(measurement_type, {})
         
         if from_unit not in conversions:
-            # Unknown source unit
-            return value, from_unit
+            raise ValueError(
+                f"Unknown source unit '{from_unit}' for measurement type '{measurement_type}'. "
+                f"Known units: {list(conversions.keys())}"
+            )
         
         # Convert to SI first
         si_value = value * conversions[from_unit]

@@ -27,8 +27,10 @@ class TimezoneAdapter:
             try:
                 self._tz_cache[tz_name] = pytz.timezone(tz_name)
             except pytz.exceptions.UnknownTimeZoneError:
-                # Fall back to UTC if timezone unknown
-                self._tz_cache[tz_name] = pytz.UTC
+                raise ValueError(
+                    f"Unknown timezone '{tz_name}'. Use a valid IANA timezone name "
+                    f"(e.g., 'US/Eastern', 'Europe/London', 'UTC')."
+                )
         return self._tz_cache[tz_name]
     
     def to_utc(self, timestamp: Union[str, datetime], 
@@ -60,15 +62,16 @@ class TimezoneAdapter:
                 tz = self.get_timezone(self.default_timezone)
                 dt = tz.localize(dt)
         elif source_tz:
-            # Already has timezone but we want to ensure it's correct
+            # Already has timezone but caller says it should be in source_tz —
+            # strip the existing tzinfo and re-localize to the correct timezone
             tz = self.get_timezone(source_tz)
-            dt = dt.replace(tzinfo=tz)
+            dt = tz.localize(dt.replace(tzinfo=None))
         
         # Convert to UTC
         utc_dt = dt.astimezone(pytz.UTC)
         
         # Return ISO format string
-        return utc_dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ')[:-4] + 'Z'
+        return utc_dt.strftime('%Y-%m-%dT%H:%M:%S.') + f'{utc_dt.microsecond // 1000:03d}Z'
     
     def convert_timeseries(self, timeseries_data: Dict[str, Any],
                           source_tz: Optional[str] = None) -> Dict[str, Any]:
